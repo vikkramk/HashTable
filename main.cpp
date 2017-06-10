@@ -9,7 +9,7 @@
 
 #define ID_MAX 999999
 #define MAX_COLLISIONS 3
-#define START_SIZE 100
+#define START_SIZE 10
 
 using namespace std;
 
@@ -31,12 +31,13 @@ student** table;
 
 /*Hash function*/
 int hash(int id) {
-	return (int)((float)id/ID_MAX*tablelen);
+	return id%tablelen;
 }	
 
 /*Search for a student*/
 student* getStudent(int id) {
 	student* s = table[hash(id)];
+	
 	while (s != NULL && s->id != id) {
 		s = s->next;
 	}
@@ -61,6 +62,7 @@ int addstudent(student *s) {
 	}
 
 	//Collision, add in next in chain
+	collisions++;
 	student* chainlink = table[index];
 	while (chainlink->next != NULL) {
 		collisions++;
@@ -73,23 +75,26 @@ int addstudent(student *s) {
 		student** oldtable = table;
 		tablelen *= 2;
 		table = new student*[tablelen];
+		
+		for (int i = 0; i < tablelen; i++)
+			table[i] = NULL;
 
 		//Add all the values into new table
 		for (int i = 0; i < tablelen/2; i++) {
 			student* toadd = oldtable[i];
 
-			cout << "Transfering to new table of:" << tablelen;
-
 			while (toadd != NULL) {
-				addstudent(toadd);
+				student* st = toadd;
 				toadd = toadd->next;
+				st->next = NULL;
+				addstudent(st);
 			}
 		}
 
 		//Delete old table
 		delete[] oldtable;
 	}
-
+	
 	return 0;
 }
 
@@ -99,6 +104,7 @@ void print() {
 	int count = 0;
 
 	for (int i = 0; i < tablelen; i++) {
+		
 		student* s = table[i];
 
 		while (s != NULL) {
@@ -159,7 +165,8 @@ main() {
 
 	srand(time(NULL));
 
-	memset(table, 0, sizeof(student*));
+	for (int i = 0; i < tablelen; i++)
+		table[i] = NULL;
 	
 	//Load names
 	ifstream firstf ("firstnames.txt"), lastf ("lastnames.txt");
@@ -193,6 +200,9 @@ main() {
 			cout << "Enter the ID number (000000-999999): " << flush;
 			cin >> s->id;
 
+			cout << "Enter GPA: " << flush;
+			cin >> s->gpa;
+			
 			if (s->id > 999999 || s->id < 0) {
 				cout << "ID must be between 0 and 999999" << endl;
 				continue;
@@ -243,23 +253,16 @@ main() {
 				s->gpa = (float)(rand()%4000)/1000;
 				
 
-				//Find random available id, revert to next available if not randomly found
-				int tries = tablelen;
-				do {
-					cout << tries << endl;
-					s->id = rand()%ID_MAX;
-					tries--;
-				} while(getStudent(s->id) != NULL && tries);
-
-				if (!tries) {
-					while (getStudent((s->id++)%tablelen) != NULL);
-				}
+				//Add at next available id
+				s->id = 0;
+				while(getStudent(s->id) != NULL)
+					s->id++;
 
 				addstudent(s);
 
 			}
 
-
+			cout << "Generated" << endl;	
 		}
 
 		//Quit
@@ -272,6 +275,5 @@ main() {
 			cout << "Invalid command" << endl;
 		}
 
-		cout << "Tablelen: " << tablelen << endl;
 	}
 }
